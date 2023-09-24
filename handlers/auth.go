@@ -65,14 +65,20 @@ func SignIn(c *fiber.Ctx) error {
 	}
   
   if user.Otp_enabled == true {
-    valid := totp.Validate(payload.Token, user.Otp_secret)
-    if !valid {
-      return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-        "status":  "fail",
-        "message": "Token 2FA not valid",
-      })
+    if payload.Recovery_code == "" {
+      valid := totp.Validate(payload.Token, user.Otp_secret)
+      if !valid {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+          "status":  "fail",
+          "message": "Token 2FA not valid",
+        })
+      }     
+    } else {
+        err := bcrypt.CompareHashAndPassword([]byte(user.Revovery_code), []byte(payload.Recovery_code))
+        if err != nil {
+          return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "message": "Invalid revovery code"})
+        }
     }
-
   }
 
 	tokenByte := jwt.New(jwt.SigningMethodHS256)
@@ -153,9 +159,10 @@ func GenerateOTP(c *fiber.Ctx) error {
     return c.JSON(otpResponse)
 }
 
+
 func VerifyOTP(c *fiber.Ctx) error {
     var payload *models.OTPInput
-	  tokenUser := c.Locals("user").(*models.User)
+    tokenUser := c.Locals("user").(*models.User)
 
     if err := c.BodyParser(&payload); err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -182,18 +189,38 @@ func VerifyOTP(c *fiber.Ctx) error {
         })
     }
 
+    recoveryCode, err := config.GenerateRandomString(10)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "status":  "error",
+            "message": "No se pudo generar el código de recuperación",
+        })
+    }
+
+    hashedRecoveryCode, err := bcrypt.GenerateFromPassword([]byte(recoveryCode), bcrypt.DefaultCost)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "status":  "error",
+            "message": "No se pudo hacer el hash el código de recuperación",
+        })
+    }
+
+
     dataToUpdate := models.User{
-        Otp_enabled:  true,
-        Otp_verified: true,
+        Otp_enabled:   true,
+        Otp_verified:  true,
+        Revovery_code: string(hashedRecoveryCode),
     }
 
     db.Model(&user).Updates(dataToUpdate)
 
     userResponse := fiber.Map{
-        "id":          user.ID,
-        "name":        user.Name,
-        "email":       user.Email,
-        "otp_enabled": user.Otp_enabled,
+        "id":            user.ID,
+        "name":          user.Name,
+        "email":         user.Email,
+        "otp_enabled":   user.Otp_enabled,
+        "recovery_code": recoveryCode, 
+        "recovery_code_hash": hashedRecoveryCode, 
     }
 
     return c.JSON(fiber.Map{
