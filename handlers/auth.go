@@ -121,6 +121,13 @@ func Logout(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})
 }
 
+func GetCodes(c *fiber.Ctx) error {
+  db := database.DB
+  var users []models.User
+  db.Find(&users)
+  return c.JSON(users)
+}
+
 func GenerateOTP(c *fiber.Ctx) error {
 	  tokenUser := c.Locals("user").(*models.User)
 
@@ -144,9 +151,25 @@ func GenerateOTP(c *fiber.Ctx) error {
         })
     }
 
+    hashedOtpSecret, err := bcrypt.GenerateFromPassword([]byte(key.Secret()), bcrypt.DefaultCost)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "status":  "error",
+            "message": "No se pudo hacer el hash de secret key",
+        })
+    }
+
+    hashedOtpUrl, err := bcrypt.GenerateFromPassword([]byte(key.URL()), bcrypt.DefaultCost)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "status":  "error",
+            "message": "No se pudo hacer el hash de secret key",
+        })
+    }
+
     dataToUpdate := models.User{
-        Otp_secret:   key.Secret(),
-        Otp_auth_url: key.URL(),
+        Otp_secret:   string(hashedOtpSecret),
+        Otp_auth_url: string(hashedOtpUrl),
     }
 
     db.Model(&user).Updates(dataToUpdate)
