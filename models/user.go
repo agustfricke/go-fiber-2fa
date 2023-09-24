@@ -27,7 +27,5 @@ type SignInInput struct {
 }
 
 type OTPInput struct {
-  UserId  string `json:"user_id"`
-  Email   string `json:"email"`
 	Token   string `json:"token"`
 }

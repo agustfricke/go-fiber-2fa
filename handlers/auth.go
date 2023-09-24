@@ -116,18 +116,11 @@ func Logout(c *fiber.Ctx) error {
 }
 
 func GenerateOTP(c *fiber.Ctx) error {
-    var payload *models.OTPInput
-
-    if err := c.BodyParser(&payload); err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "status":  "fail",
-            "message": err.Error(),
-        })
-    }
+	  tokenUser := c.Locals("user").(*models.User)
 
     key, err := totp.Generate(totp.GenerateOpts{
         Issuer:      "Tech con Agust",
-        AccountName: payload.Email,
+        AccountName: tokenUser.Email,
         SecretSize:  15,
     })
 
@@ -137,7 +130,7 @@ func GenerateOTP(c *fiber.Ctx) error {
 
     var user models.User
     db := database.DB
-    result := db.First(&user, "id = ?", payload.UserId)
+    result := db.First(&user, "id = ?", tokenUser.ID)
     if result.Error != nil {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
             "status":  "fail",
@@ -162,6 +155,7 @@ func GenerateOTP(c *fiber.Ctx) error {
 
 func VerifyOTP(c *fiber.Ctx) error {
     var payload *models.OTPInput
+	  tokenUser := c.Locals("user").(*models.User)
 
     if err := c.BodyParser(&payload); err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -170,15 +164,13 @@ func VerifyOTP(c *fiber.Ctx) error {
         })
     }
 
-    message := "El token no es válido o el usuario no existe"
-
     var user models.User
     db := database.DB
-    result := db.First(&user, "id = ?", payload.UserId)
+    result := db.First(&user, "id = ?", tokenUser.ID)
     if result.Error != nil {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
             "status":  "fail",
-            "message": message,
+            "message": "El token no es válido o el usuario no existe",
         })
     }
 
@@ -186,7 +178,7 @@ func VerifyOTP(c *fiber.Ctx) error {
     if !valid {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
             "status":  "fail",
-            "message": message,
+            "message": "El token no es válido o el usuario no existe",
         })
     }
 
@@ -211,18 +203,11 @@ func VerifyOTP(c *fiber.Ctx) error {
 }
 
 func DisableOTP(c *fiber.Ctx) error {
-    var payload *models.OTPInput
-
-    if err := c.BodyParser(&payload); err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "status":  "fail",
-            "message": err.Error(),
-        })
-    }
+	  tokenUser := c.Locals("user").(*models.User)
 
     var user models.User
     db := database.DB
-    result := db.First(&user, "id = ?", payload.UserId)
+    result := db.First(&user, "id = ?", tokenUser.ID)
     if result.Error != nil {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
             "status":  "fail",
