@@ -13,5 +13,4 @@ func SetupRoutes(app *fiber.App) {
   app.Post("/generate", middleware.DeserializeUser, handlers.GenerateOTP)
   app.Post("/verify", middleware.DeserializeUser, handlers.VerifyOTP)
   app.Post("/disable", middleware.DeserializeUser, handlers.DisableOTP)
-  app.Get("/get", handlers.GetCodes)
 }
