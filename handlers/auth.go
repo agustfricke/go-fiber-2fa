@@ -64,12 +64,15 @@ func SignIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "message": "Invalid email or Password"})
 	}
   
-  valid := totp.Validate(payload.Token, user.Otp_secret)
-  if !valid {
+  if user.Otp_enabled == true {
+    valid := totp.Validate(payload.Token, user.Otp_secret)
+    if !valid {
       return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-          "status":  "fail",
-          "message": "Token 2FA not valid",
+        "status":  "fail",
+        "message": "Token 2FA not valid",
       })
+    }
+
   }
 
 	tokenByte := jwt.New(jwt.SigningMethodHS256)
